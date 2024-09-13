@@ -19,3 +19,10 @@ export class MiddlewareNextNotCalledError extends Error {
     this.name = 'MiddlewareNextNotCalledError';
   }
 }
+
+export class ComponentNotSetError extends Error {
+  constructor(message: string = 'Component not set') {
+    super(message);
+    this.name = 'ComponentNotSetError';
+  }
+}
