@@ -4,15 +4,24 @@ import { CustomError } from './custom-error';
 
 // Define a generic class for type-safe middleware
 class TypeSafeMiddleware<T = {}> {
-  private middlewares: ((payload: T & BaseContext) => Partial<T>)[] = [];
+  private middlewares: ((payload: T & BaseContext) => Partial<T> | null)[] = [];
 
   use<U>(newValuesFn: (prev: T & BaseContext) => U): TypeSafeMiddleware<T & U> {
-    this.middlewares.push((payload) => newValuesFn(payload) as Partial<T>);
+    this.middlewares.push((payload) => {
+      const result = newValuesFn(payload);
+      if (result !== null && (typeof result !== 'object' || Array.isArray(result))) {
+        throw new Error('Middleware must return either an object or null. If you want to skip this middleware, return null instead.');
+      }
+      return result as Partial<T> | null;
+    });
     return this as unknown as TypeSafeMiddleware<T & U>;
   }
 
   execute(baseContext: BaseContext): T & BaseContext {
-    return this.middlewares.reduce((payload, middleware) => ({...payload, ...middleware(payload)}), { ...baseContext } as T & BaseContext);
+    return this.middlewares.reduce((payload, middleware) => {
+      const result = middleware(payload);
+      return result ? {...payload, ...result} : payload;
+    }, { ...baseContext } as T & BaseContext);
   }
 }
 
@@ -71,6 +80,7 @@ const ErrorFallback: React.FC<{
   if (error instanceof Error && 'render' in error && typeof error.render === 'function') {
     return error.render();
   } else {
+    console.error(error);
     const defaultError = new DefaultError(error instanceof Error ? error.message : String(error));
     return defaultError.render();
   }
