@@ -1,36 +1,33 @@
 import ErrorFallback from "./components/ErrorFallback";
-import { ComponentNotSetError, MiddlewareNextNotCalledError } from "./errors";
+import { ComponentNotSetError } from "./errors";
 
-// Middleware function type
-type MiddlewareFunction = () => Promise<void>;
+// Define a generic class for type-safe middleware
+class TypeSafeMiddleware<T = {}> {
+  private middlewares: ((payload: T) => Partial<T>)[] = [];
+
+  use<U>(newValuesFn: (prev: T) => U): TypeSafeMiddleware<T & U> {
+    this.middlewares.push((payload) => newValuesFn(payload) as Partial<T>);
+    return this as unknown as TypeSafeMiddleware<T & U>;
+  }
+
+  execute(): T {
+    return this.middlewares.reduce((payload, middleware) => ({...payload, ...middleware(payload)}), {} as T);
+  }
+}
 
 // ServerComponent class
-class ServerComponent {
-  private middlewares: MiddlewareFunction[] = [];
-  private Component: React.ComponentType | null = null;
+class ServerComponent<T = {}> {
+  private typeSafeMiddleware: TypeSafeMiddleware<T> = new TypeSafeMiddleware<T>();
+  private Component: React.ComponentType<T> | null = null;
 
-  use(...middlewareFns: ((next: () => Promise<void>) => Promise<void>)[]): ServerComponent {
-    this.middlewares.push(...middlewareFns.map((fn) => async () => {
-      let nextCalled = false;
-      await fn(() => { nextCalled = true; return Promise.resolve(); });
-      if (!nextCalled) {
-        const fnName = fn.name || 'anonymous function';
-        const errorMessage = `Middleware ${fnName} failed: next() was not called`;
-        throw new MiddlewareNextNotCalledError(errorMessage);
-      }
-    }));
-    return this;
+  use<U>(newValuesFn: (prev: T) => U): ServerComponent<T & U> {
+    this.typeSafeMiddleware.use(newValuesFn);
+    return this as unknown as ServerComponent<T & U>;
   }
 
-  component(Component: React.ComponentType): React.ComponentType {
+  component(Component: React.ComponentType<T>): React.ComponentType {
     this.Component = Component;
     return this.createWrappedComponent();
-  }
-
-  private async applyMiddleware() {
-    for (const fn of this.middlewares) {
-      await fn();
-    }
   }
 
   private createWrappedComponent(): React.ComponentType {
@@ -40,8 +37,8 @@ class ServerComponent {
       }
 
       try {
-        await this.applyMiddleware();
-        return <this.Component {...props} />;
+        const middlewareResult = this.typeSafeMiddleware.execute();
+        return <this.Component {...props} ctx={middlewareResult} />;
       } catch (error) {
         if (error instanceof Error) {
           if (error.message.startsWith('NEXT_')) {
@@ -56,6 +53,6 @@ class ServerComponent {
 }
 
 // Factory function that creates a new ServerComponent instance
-export function createServerComponent(): ServerComponent {
-  return new ServerComponent();
+export function createServerComponent<T = {}>(): ServerComponent<T> {
+  return new ServerComponent<T>();
 }
