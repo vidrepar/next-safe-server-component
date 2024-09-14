@@ -1,56 +1,41 @@
-class TypeSafeMiddleware<T = {}> {
-  private middlewares: ((payload: any) => any)[] = [];
 
-  use<U>(middleware: (payload: T) => T & U): TypeSafeMiddleware<T & U> {
-    this.middlewares.push(middleware);
+// Define a generic class for type-safe middleware, where T is the accumulated type (default: empty object)
+class TypeSafeMiddleware<T = {}> {
+  // Array to store middleware functions that take T and return Partial<T>
+  private middlewares: ((payload: T) => Partial<T>)[] = [];
+
+  // Method to add a new middleware function, U is the type of new properties
+  use<U>(newValuesFn: (prev: T) => U): TypeSafeMiddleware<T & U> {
+    // Add the new middleware function to the array, casting the return type to Partial<T>
+    this.middlewares.push((payload) => newValuesFn(payload) as Partial<T>);
+    // Return a new instance with updated type T & U, using type assertion
     return this as unknown as TypeSafeMiddleware<T & U>;
   }
 
+  // Method to execute all middleware functions, returning the final accumulated type T
   execute(): T {
-    // {} as T is needed to provide an initial value for the reduce operation
-    // It creates an empty object and asserts it as type T
-    // This is necessary because the first middleware expects an input of type T
-    // Without it, TypeScript would infer the initial value as {}, which doesn't match T
-    return this.middlewares.reduce((payload, middleware) => middleware(payload), {} as T);
+    // Reduce over all middleware functions, accumulating the result with inferred types
+    return this.middlewares.reduce((payload, middleware) => ({...payload, ...middleware(payload)}), {} as T);
   }
 }
 
-// Declare middleware functions outside the chain
-const incrementCount = (payload: { count: number }) => ({ ...payload, count: (payload.count || 0) + 1 });
-const doubleCount = (payload: { count: number }) => ({ ...payload, doubled: payload.count * 2 });
-const logAndTriple = (payload: { count: number; doubled: number }) => {
-  console.log(payload.doubled);
-  return { ...payload, tripled: payload.doubled * 1.5 };
-};
-const logTripled = (payload: { count: number; doubled: number; tripled: number }) => {
-  console.log(payload.tripled);
-  return payload;
-};
+// Usage example:
+// Create a new instance of TypeSafeMiddleware with initial empty type {}
+const middleware = new TypeSafeMiddleware();
+// Chain multiple middleware functions, each adding to or modifying the inferred type
+const typedMiddleware = middleware
+  .use((prev) => ({ count: 1 })) // Inferred type: { count: number }
+  .use((prev) => ({ searchParams: { foo: 'bar' } })) // Inferred type: { count: number, searchParams: { foo: string } }
+  .use((prev) => ({ doubled: prev.count * 2 })) // Inferred type: { count: number, searchParams: { foo: string }, doubled: number }
+  .use((prev) => {
+    console.log(prev.doubled); // TypeScript knows prev.doubled exists and is a number
+    return { tripled: prev.doubled * 1.5 }; // Inferred type now includes tripled: number
+  })
+  .use((prev) => {
+    console.log(prev.tripled); // TypeScript knows prev.tripled exists and is a number
+    return {}; // Return an empty object (no changes to type)
+  });
 
-// Usage example with separate middleware functions:
-const middleware1 = new TypeSafeMiddleware<{ count: number }>();
-const typedMiddleware1 = middleware1
-.use((payload) => ({ ...payload, count: (payload.count || 0) + 1 }))
-.use(incrementCount)
-.use(doubleCount)
-.use(logAndTriple)
-.use(logTripled);
-
-const result1 = typedMiddleware1.execute();
-
-// Usage example without separate middleware functions:
-const middleware2 = new TypeSafeMiddleware<{ count: number }>();
-const typedMiddleware2 = middleware2
-.use((payload) => ({ ...payload, count: (payload.count || 0) + 1 }))
-.use((payload) => ({ ...payload, searchParams: {foo: 'bar'} }))
-.use((payload) => ({ ...payload, doubled: payload.count * 2 }))
-.use((payload) => {
-  console.log(payload.doubled);
-  return { ...payload, tripled: payload.doubled * 1.5 };
-})
-.use((payload) => {
-  console.log(payload.tripled);
-  return payload;
-});
-
-const result2 = typedMiddleware2.execute();
+// Execute the middleware chain and store the result
+// result type is inferred as { count: number, searchParams: { foo: string }, doubled: number, tripled: number }
+const result = typedMiddleware.execute();
