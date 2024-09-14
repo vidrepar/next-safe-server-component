@@ -11,7 +11,7 @@ class TypeSafeMiddleware<T = {}> {
     return this as unknown as TypeSafeMiddleware<T & U>;
   }
 
-  execute(baseContext: BaseContext): T {
+  execute(baseContext: BaseContext): T & BaseContext {
     return this.middlewares.reduce((payload, middleware) => ({...payload, ...middleware(payload)}), { ...baseContext } as T & BaseContext);
   }
 }
@@ -25,14 +25,14 @@ type BaseContext = {
 // ServerComponent class
 class ServerComponent<T = {}> {
   private typeSafeMiddleware: TypeSafeMiddleware<T> = new TypeSafeMiddleware<T>();
-  private Component: React.ComponentType<{ ctx: T } & BaseContext> | null = null;
+  private Component: React.ComponentType<{ ctx: T & BaseContext }> | null = null;
 
-  use<U>(newValuesFn: (prev: T & BaseContext) => U): ServerComponent<T & U> {
+  use<U>(newValuesFn: (prev: BaseContext & T) => U): ServerComponent<T & U> {
     this.typeSafeMiddleware.use(newValuesFn);
     return this as unknown as ServerComponent<T & U>;
   }
 
-  component(Component: React.ComponentType<{ ctx: T } & BaseContext>): React.ComponentType<NextPageContext & BaseContext> {
+  component(Component: React.ComponentType<{ ctx: BaseContext & T }>): React.ComponentType<NextPageContext & BaseContext> {
     this.Component = Component;
     return this.createWrappedComponent();
   }
@@ -45,7 +45,7 @@ class ServerComponent<T = {}> {
 
       try {
         const ctx = this.typeSafeMiddleware.execute({ params, searchParams });
-        // @ts-expect-error this.Component is in fact callable, but the types say it's not. Calling the component like this makes it possible to catch custom errors and render them.
+          // @ts-expect-error this.Component is in fact callable, but the types say it's not. Calling the component like this makes it possible to catch custom errors and render them.
         return this.Component({ ...props, ctx, params, searchParams });
       } catch (error) {
         if (error instanceof Error) {

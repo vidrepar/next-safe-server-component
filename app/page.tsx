@@ -1,30 +1,33 @@
 
 import { z } from "zod";
+import { ForbiddenError } from "./components/errors";
 import { createServerComponent } from "./lib/safe-server-component/safe-server-component";
 
 export default createServerComponent()
-.use(prev => {
-  console.log('prev', prev);
+.use(ctx => {
+  console.log('ctx1', ctx);
 
   return {
     searchParams: z.object({
-      search: z.string().optional()
-    }).parse(prev.searchParams)
+      search: z.string().optional().transform(value => "bar" ),
+    }).parse(ctx.searchParams)
   }
 })
-.use((prev) => ({...prev, currentUser: 'currentUser', auth: 'auth'}))
-.use((prev) => ({ ...prev, logging: 'logging' }))
+.use(ctx => {
+  console.log('ctx2', ctx);
+
+  return {};
+})
+.use((ctx) => ({ currentUser: 'currentUser', auth: 'auth' }))
+.use((ctx) => ({ logging: 'logging' }))
 .component((props) => {
 
   // throw new TooManyRequestsError();
   // throw new ComponentNotSetError();
-  // throw new ForbiddenError();
+  throw new ForbiddenError();
 
   return <div>
     <h1>Hello World 123</h1>
-    {JSON.stringify(props.params, null, 2)}
-    {JSON.stringify(props.searchParams, null, 2)}
     {JSON.stringify(props, null, 2)}
   </div>;
 });
-
