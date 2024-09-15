@@ -18,6 +18,9 @@ export default createServerComponent()
 .use(ctx => {
   console.log('ctx2', ctx);
 
+  // throw new ForbiddenError();
+  // throw new TooManyRequestsError();
+
   return {};
 })
 .use((ctx) => ({ currentUser: 'currentUser', auth: 'auth' }))
