@@ -2,7 +2,7 @@
 "use server";
 
 import { z } from "zod";
-import { createServerComponent } from "./lib/safe-server-component/safe-server-component";
+import { createServerComponent } from "./lib/safe-server-component";
 import { post } from "./page.actions";
 
 export default createServerComponent()
@@ -30,8 +30,6 @@ export default createServerComponent()
   // throw new TooManyRequestsError();
   // throw new ComponentNotSetError();
   // throw new ForbiddenError();
-
-  
 
   return <div>
     <h1>Hello World 123</h1>

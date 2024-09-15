@@ -1,4 +1,4 @@
-import { CustomError } from "../lib/safe-server-component/custom-error";
+import { CustomError } from "./custom-error";
 
 export class ForbiddenError extends CustomError {
   digest: string = `ForbiddenError;${this.message}`;
@@ -75,3 +75,5 @@ export class ComponentNotSetError extends CustomError {
     );
   }
 }
+
+
