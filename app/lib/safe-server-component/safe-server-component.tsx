@@ -4,15 +4,20 @@ import { CustomError } from './custom-error';
 
 // Define a generic class for type-safe middleware
 class TypeSafeMiddleware<T = {}> {
-  private middlewares: ((payload: T & BaseContext) => Partial<T>)[] = [];
+  private middlewares: ((payload: T & BaseContext) => Promise<Partial<T>> | Partial<T>)[] = [];
 
-  use<U>(newValuesFn: (prev: T & BaseContext) => U): TypeSafeMiddleware<T & U> {
-    this.middlewares.push((payload) => newValuesFn(payload) as Partial<T>);
+  use<U>(newValuesFn: (prev: T & BaseContext) => Promise<U> | U): TypeSafeMiddleware<T & U> {
+    this.middlewares.push((payload) => Promise.resolve(newValuesFn(payload)) as Promise<Partial<T>>);
     return this as unknown as TypeSafeMiddleware<T & U>;
   }
 
-  execute(baseContext: BaseContext): T & BaseContext {
-    return this.middlewares.reduce((payload, middleware) => ({...payload, ...middleware(payload)}), { ...baseContext } as T & BaseContext);
+  async execute(baseContext: BaseContext): Promise<T & BaseContext> {
+    let payload = { ...baseContext } as T & BaseContext;
+    for (const middleware of this.middlewares) {
+      const result = await middleware(payload);
+      payload = { ...payload, ...result };
+    }
+    return payload;
   }
 }
 
@@ -27,7 +32,7 @@ class ServerComponent<T = {}> {
   private typeSafeMiddleware: TypeSafeMiddleware<T> = new TypeSafeMiddleware<T>();
   private Component: React.ComponentType<{ ctx: T & BaseContext }> | null = null;
 
-  use<U>(newValuesFn: (prev: BaseContext & T) => U): ServerComponent<T & U> {
+  use<U>(newValuesFn: (prev: BaseContext & T) => Promise<U> | U): ServerComponent<T & U> {
     this.typeSafeMiddleware.use(newValuesFn);
     return this as unknown as ServerComponent<T & U>;
   }
@@ -44,8 +49,8 @@ class ServerComponent<T = {}> {
       }
 
       try {
-        const ctx = this.typeSafeMiddleware.execute({ params, searchParams });
-          // @ts-expect-error this.Component is in fact callable, but the types say it's not. Calling the component like this makes it possible to catch custom errors and render them.
+        const ctx = await this.typeSafeMiddleware.execute({ params, searchParams });
+        // @ts-expect-error this.Component is in fact callable, but the types say it's not. Calling the component like this makes it possible to catch custom errors and render them.
         return this.Component({ ...props, ctx, params, searchParams }); // Keep params and searchParams for backwards compatibility
       } catch (error) {
         console.error(error);
