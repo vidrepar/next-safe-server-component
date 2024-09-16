@@ -1,5 +1,5 @@
 import ErrorFallback from "./components/ErrorFallback";
-import { MiddlewareNextNotCalledError } from "./errors";
+import { ComponentNotSetError, MiddlewareNextNotCalledError } from "./errors";
 
 // Middleware function type
 type MiddlewareFunction = () => Promise<void>;
@@ -36,7 +36,7 @@ class ServerComponent {
   private createWrappedComponent(): React.ComponentType {
     return async (props: any) => {
       if (!this.Component) {
-        throw new Error("Component not set. Call .component() before rendering.");
+        throw new ComponentNotSetError();
       }
 
       try {

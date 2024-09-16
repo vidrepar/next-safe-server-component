@@ -1,5 +1,5 @@
 import React from 'react';
-import { ForbiddenError, MiddlewareNextNotCalledError, TooManyRequestsError } from '../errors';
+import { ComponentNotSetError, ForbiddenError, MiddlewareNextNotCalledError, TooManyRequestsError } from '../errors';
 
 interface ErrorFallbackProps {
   error: Error;
@@ -9,6 +9,7 @@ const gradientStyles = {
   forbidden: 'bg-gradient-to-r from-red-500 to-orange-500',
   tooManyRequests: 'bg-gradient-to-r from-yellow-400 to-orange-500',
   middlewareNextNotCalled: 'bg-gradient-to-r from-red-500 to-orange-500',
+  componentNotSet: 'bg-gradient-to-r from-red-500 to-orange-500',
   default: 'bg-gradient-to-r from-blue-500 to-purple-500',
 };
 
@@ -25,6 +26,9 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error }) => {
   } else if (error instanceof MiddlewareNextNotCalledError) {
     title = 'Middleware next() not called';
     gradientStyle = gradientStyles.middlewareNextNotCalled;
+  } else if (error instanceof ComponentNotSetError) {
+    title = 'Component not set';
+    gradientStyle = gradientStyles.componentNotSet;
   } else {
     title = 'An error occurred';
     gradientStyle = gradientStyles.default;
