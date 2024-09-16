@@ -16,7 +16,7 @@ export default createServerComponent()
 .use(ctx => {
   console.log('ctx2', ctx);
 
-  return {};
+  return undefined;
 })
 .use((ctx) => ({ currentUser: 'currentUser', auth: 'auth' }))
 .use((ctx) => ({ logging: 'logging' }))
