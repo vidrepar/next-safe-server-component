@@ -1,6 +1,6 @@
 "use server";
 
-import { ForbiddenError, TooManyRequestsError } from "./components/errors";
+import { ForbiddenError, TooManyRequestsError } from "./lib/safe-server-component/errors";
 
 export async function post() {
     console.log('--- post ---');
