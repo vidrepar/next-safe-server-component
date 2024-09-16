@@ -1,4 +1,4 @@
-import { ForbiddenError, TooManyRequestsError } from "./errors";
+import { TooManyRequestsError } from "./errors";
 import { createServerComponent } from "./safe-server-component";
 
 // Example middleware functions
@@ -10,7 +10,7 @@ async function authMiddleware() {
   // redirect('/login');
   // notFound();
   throw new TooManyRequestsError();
-  throw new ForbiddenError();
+  // throw new ForbiddenError();
 }
 
 async function loggingMiddleware() {
@@ -19,9 +19,10 @@ async function loggingMiddleware() {
   // throw new TooManyRequestsError('Rate limit exceeded');
 }
 
-// Export the wrapped component as default with multiple middleware functions
-export default createServerComponent(() => (
-    <div>
-      <h1>Hello World</h1>
-    </div>
-  ), authMiddleware, loggingMiddleware);
+export default createServerComponent()
+.use(authMiddleware)
+.use(loggingMiddleware)
+.component(() => <div>
+  <h1>Hello World 123</h1>
+</div>);
+
