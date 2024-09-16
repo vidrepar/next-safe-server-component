@@ -48,20 +48,8 @@ class ServerComponent<T = {}> {
         throw new ComponentNotSetError();
       }
 
-      try {
-        const ctx = await this.typeSafeMiddleware.execute({ params, searchParams });
-        // @ts-expect-error this.Component is in fact callable, but the types say it's not. Calling the component like this makes it possible to catch custom errors and render them.
-        return this.Component({ ...props, ctx, params, searchParams }); // Keep params and searchParams for backwards compatibility
-      } catch (error) {
-        console.error(error);
-        if (error instanceof Error) {
-          if (error.message.startsWith('NEXT_')) {
-            throw error;
-          }
-          return <ErrorFallback error={error} />;
-        }
-        return <ErrorFallback error={new Error('An unknown error occurred')} />;
-      }
+      const ctx = await this.typeSafeMiddleware.execute({ params, searchParams });
+      return <this.Component {...props} ctx={ctx} params={params} searchParams={searchParams} />; // Keep params and searchParams for backwards compatibility
     };
   }
 }
