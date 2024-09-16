@@ -4,15 +4,15 @@ import { CustomError } from './custom-error';
 
 // Define a generic class for type-safe middleware
 class TypeSafeMiddleware<T = {}> {
-  private middlewares: ((payload: T) => Partial<T>)[] = [];
+  private middlewares: ((payload: T & BaseContext) => Partial<T>)[] = [];
 
-  use<U>(newValuesFn: (prev: T) => U): TypeSafeMiddleware<T & U> {
+  use<U>(newValuesFn: (prev: T & BaseContext) => U): TypeSafeMiddleware<T & U> {
     this.middlewares.push((payload) => newValuesFn(payload) as Partial<T>);
     return this as unknown as TypeSafeMiddleware<T & U>;
   }
 
-  execute(): T {
-    return this.middlewares.reduce((payload, middleware) => ({...payload, ...middleware(payload)}), {} as T);
+  execute(baseContext: BaseContext): T {
+    return this.middlewares.reduce((payload, middleware) => ({...payload, ...middleware(payload)}), { ...baseContext } as T & BaseContext);
   }
 }
 
@@ -27,7 +27,7 @@ class ServerComponent<T = {}> {
   private typeSafeMiddleware: TypeSafeMiddleware<T> = new TypeSafeMiddleware<T>();
   private Component: React.ComponentType<{ ctx: T } & BaseContext> | null = null;
 
-  use<U>(newValuesFn: (prev: T) => U): ServerComponent<T & U> {
+  use<U>(newValuesFn: (prev: T & BaseContext) => U): ServerComponent<T & U> {
     this.typeSafeMiddleware.use(newValuesFn);
     return this as unknown as ServerComponent<T & U>;
   }
@@ -44,7 +44,7 @@ class ServerComponent<T = {}> {
       }
 
       try {
-        const ctx = this.typeSafeMiddleware.execute();
+        const ctx = this.typeSafeMiddleware.execute({ params, searchParams });
         // @ts-expect-error this.Component is in fact callable, but the types say it's not. Calling the component like this makes it possible to catch custom errors and render them.
         return this.Component({ ...props, ctx, params, searchParams });
       } catch (error) {
@@ -92,4 +92,3 @@ class DefaultError extends CustomError {
     );
   }
 }
-

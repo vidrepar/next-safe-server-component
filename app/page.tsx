@@ -1,13 +1,22 @@
 
-import { TooManyRequestsError } from "./components/errors";
+import { z } from "zod";
 import { createServerComponent } from "./lib/safe-server-component/safe-server-component";
 
 export default createServerComponent()
+.use(prev => {
+  console.log('prev', prev);
+
+  return {
+    searchParams: z.object({
+      search: z.string().optional()
+    }).parse(prev.searchParams)
+  }
+})
 .use((prev) => ({...prev, currentUser: 'currentUser', auth: 'auth'}))
 .use((prev) => ({ ...prev, logging: 'logging' }))
 .component((props) => {
 
-  throw new TooManyRequestsError();
+  // throw new TooManyRequestsError();
   // throw new ComponentNotSetError();
   // throw new ForbiddenError();
 
