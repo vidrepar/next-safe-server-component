@@ -4,24 +4,15 @@ import { CustomError } from './custom-error';
 
 // Define a generic class for type-safe middleware
 class TypeSafeMiddleware<T = {}> {
-  private middlewares: ((payload: T & BaseContext) => Partial<T> | null)[] = [];
+  private middlewares: ((payload: T & BaseContext) => Partial<T>)[] = [];
 
   use<U>(newValuesFn: (prev: T & BaseContext) => U): TypeSafeMiddleware<T & U> {
-    this.middlewares.push((payload) => {
-      const result = newValuesFn(payload);
-      if (result !== null && (typeof result !== 'object' || Array.isArray(result))) {
-        throw new Error('Middleware must return either an object or null. If you want to skip this middleware, return null instead.');
-      }
-      return result as Partial<T> | null;
-    });
+    this.middlewares.push((payload) => newValuesFn(payload) as Partial<T>);
     return this as unknown as TypeSafeMiddleware<T & U>;
   }
 
   execute(baseContext: BaseContext): T & BaseContext {
-    return this.middlewares.reduce((payload, middleware) => {
-      const result = middleware(payload);
-      return result ? {...payload, ...result} : payload;
-    }, { ...baseContext } as T & BaseContext);
+    return this.middlewares.reduce((payload, middleware) => ({...payload, ...middleware(payload)}), { ...baseContext } as T & BaseContext);
   }
 }
 
@@ -55,8 +46,9 @@ class ServerComponent<T = {}> {
       try {
         const ctx = this.typeSafeMiddleware.execute({ params, searchParams });
           // @ts-expect-error this.Component is in fact callable, but the types say it's not. Calling the component like this makes it possible to catch custom errors and render them.
-        return this.Component({ ...props, ctx, params, searchParams });
+        return this.Component({ ...props, ctx, params, searchParams }); // Keep params and searchParams for backwards compatibility
       } catch (error) {
+        console.error(error);
         if (error instanceof Error) {
           if (error.message.startsWith('NEXT_')) {
             throw error;
@@ -80,7 +72,6 @@ const ErrorFallback: React.FC<{
   if (error instanceof Error && 'render' in error && typeof error.render === 'function') {
     return error.render();
   } else {
-    console.error(error);
     const defaultError = new DefaultError(error instanceof Error ? error.message : String(error));
     return defaultError.render();
   }
