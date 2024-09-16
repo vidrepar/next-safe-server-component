@@ -1,4 +1,5 @@
 import ErrorFallback from "./components/ErrorFallback";
+import { MiddlewareNextNotCalledError } from "./errors";
 
 // Middleware function type
 type MiddlewareFunction = () => Promise<void>;
@@ -8,8 +9,16 @@ class ServerComponent {
   private middlewares: MiddlewareFunction[] = [];
   private Component: React.ComponentType | null = null;
 
-  use(...middlewareFns: MiddlewareFunction[]): ServerComponent {
-    this.middlewares.push(...middlewareFns);
+  use(...middlewareFns: ((next: () => Promise<void>) => Promise<void>)[]): ServerComponent {
+    this.middlewares.push(...middlewareFns.map((fn) => async () => {
+      let nextCalled = false;
+      await fn(() => { nextCalled = true; return Promise.resolve(); });
+      if (!nextCalled) {
+        const fnName = fn.name || 'anonymous function';
+        const errorMessage = `Middleware ${fnName} failed: next() was not called`;
+        throw new MiddlewareNextNotCalledError(errorMessage);
+      }
+    }));
     return this;
   }
 

@@ -12,3 +12,10 @@ export class TooManyRequestsError extends Error {
     this.name = 'TooManyRequestsError';
   }
 }
+
+export class MiddlewareNextNotCalledError extends Error {
+  constructor(message: string = 'Middleware next() not called') {
+    super(message);
+    this.name = 'MiddlewareNextNotCalledError';
+  }
+}

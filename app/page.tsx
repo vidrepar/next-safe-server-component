@@ -2,21 +2,20 @@ import { TooManyRequestsError } from "./errors";
 import { createServerComponent } from "./safe-server-component";
 
 // Example middleware functions
-async function authMiddleware() {
+async function authMiddleware(next: () => Promise<void>) {
   // Check authentication
-  // Uncomment the following line to test the ForbiddenError
-  // throw new ForbiddenError('You are not authorized to access this page');
+  // ... your authentication logic here ...
 
-  // redirect('/login');
-  // notFound();
-  throw new TooManyRequestsError();
-  // throw new ForbiddenError();
+  throw new TooManyRequestsError('Rate limit exceeded');
+  //  next();
 }
 
-async function loggingMiddleware() {
+async function loggingMiddleware(next: () => Promise<void>) {
   // Log request details
   // Uncomment the following line to test the TooManyRequestsError
   // throw new TooManyRequestsError('Rate limit exceeded');
+
+  // next();
 }
 
 export default createServerComponent()
